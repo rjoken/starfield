@@ -4,10 +4,12 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "structures.h"
 #include "drawing.h"
 #include "logic.h"
+
 
 int main(int argc, char *argv[])
 {

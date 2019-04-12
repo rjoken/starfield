@@ -9,3 +9,11 @@ typedef struct game_object
   SDL_Rect hitbox;
   SDL_Texture *texture;
 } object;
+
+typedef enum gamestate
+{
+  INGAME,
+  MENU,
+  GAMEOVER,
+  PAUSED
+} gamestate;
