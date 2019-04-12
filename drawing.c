@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 
 #include "structures.h"
 #include "drawing.h"
@@ -15,12 +16,20 @@ SDL_Renderer *renderer;
 //load multiple surfaces in future
 SDL_Surface *surface;
 
+TTF_Font *fixedsys;
+SDL_Color cWhite;
+SDL_Color cBlack;
+
 object player;
 
 int up;
 int down;
 int left;
 int right;
+int pause;
+
+extern gamestate currentGamestate;
+extern int pausepressed;
 
 int init(void)
 {
@@ -51,7 +60,22 @@ int init(void)
     return 0;
   }
 
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  TTF_Init();
+  fixedsys = TTF_OpenFont("resources/fnt/fixedsys.ttf", 16);
+  cWhite.r = 255;
+  cWhite.g = 255;
+  cWhite.b = 255;
+  cWhite.a = 0;
+
+  if(!fixedsys)
+  {
+    fprintf(stderr, "Error loading font 1.");
+    SDL_DestroyWindow(window);
+    SDL_DestroyRenderer(renderer);
+    return 0;
+  }
+
+  SDL_SetRenderDrawColor(renderer, cBlack.r, cBlack.g, cBlack.b, cBlack.a);
   SDL_RenderClear(renderer);
   SDL_RenderPresent(renderer);
 
@@ -87,10 +111,13 @@ int init(void)
   player.hitbox.y = (WINDOW_HEIGHT - player.hitbox.h) / 2;
   player.speed = 20;
 
+  currentGamestate = INGAME;
+
   up = 0;
   down = 0;
   left = 0;
   right = 0;
+  pause = 0;
 
   render();
 
@@ -100,7 +127,19 @@ int init(void)
 void render(void)
 {
   SDL_RenderClear(renderer);
-  draw_object(player);
+  switch(currentGamestate)
+  {
+    case INGAME:
+      draw_object(player);
+      draw_string("Gamestate: ingame", fixedsys, cWhite, 10, 10, 100, 16);
+      printf("%d\n", pausepressed);
+      break;
+    case PAUSED:
+      draw_object(player);
+      draw_string("Gamestate: paused", fixedsys, cWhite, 10, 10, 100, 16);
+      printf("%d\n", pausepressed);
+      break;
+  }
   SDL_RenderPresent(renderer);
   return;
 }
@@ -108,4 +147,18 @@ void render(void)
 void draw_object(object o)
 {
   SDL_RenderCopy(renderer, o.texture, NULL, &o.hitbox);
+}
+
+void draw_string(char *s, TTF_Font *f, SDL_Color c, int x, int y, int w, int h)
+{
+  SDL_Surface *textSurface = TTF_RenderText_Solid(f, s, c);
+  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+  SDL_FreeSurface(textSurface);
+  SDL_Rect container;
+  container.x = x;
+  container.y = y;
+  container.w = w;
+  container.h = h;
+
+  SDL_RenderCopy(renderer, textTexture, NULL, &container);
 }
