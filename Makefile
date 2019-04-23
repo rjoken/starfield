@@ -7,10 +7,10 @@ CC := gcc
 CFLAGS := `sdl2-config --libs --cflags` -ggdb3 -O0 --std=c99 -Wall -lSDL2 -lSDL2_image -lSDL2_ttf -lm
 
 # add header files here
-HDRS := structures.h logic.h drawing.h
+HDRS := structures.h logic.h drawing.h pellets.h
 
 # add source files here
-SRCS := main.c drawing.c logic.c
+SRCS := main.c drawing.c logic.c pellets.c
 
 # generate names of object files
 OBJS := $(SRCS:.c=.o)
