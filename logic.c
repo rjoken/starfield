@@ -19,6 +19,8 @@ extern SDL_Texture *pellet_texture;
 
 extern int pellet_count;
 
+extern int frames;
+
 extern int up;
 extern int down;
 extern int left;
@@ -161,7 +163,7 @@ void update(void)
       //pellet gravity
       updatePelletPos(head_pellet);
       checkCollisionWithY(head_pellet);
-      
+
       checkCollisionWithPlayer(head_pellet, player);
 
       //check pause key

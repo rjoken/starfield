@@ -24,6 +24,10 @@ TTF_Font *fixedsys;
 SDL_Color cWhite;
 SDL_Color cBlack;
 
+TTF_Font *fixedsys;
+SDL_Color cWhite;
+SDL_Color cBlack;
+
 object player;
 node *head_pellet;
 
@@ -110,7 +114,6 @@ int init(void)
 
   //free all surfaces after textures are made
   SDL_FreeSurface(player_surface);
-  SDL_FreeSurface(pellet_surface);
 
   if(!player.texture)
   {
