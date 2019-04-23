@@ -1,3 +1,4 @@
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -9,18 +10,22 @@
 #include "structures.h"
 #include "drawing.h"
 #include "logic.h"
+#include "pellets.h"
 
 SDL_Window *window;
 SDL_Renderer *renderer;
 
-//load multiple surfaces in future
-SDL_Surface *surface;
+SDL_Surface *player_surface;
+SDL_Surface *pellet_surface;
+
+SDL_Texture *pellet_texture;
 
 TTF_Font *fixedsys;
 SDL_Color cWhite;
 SDL_Color cBlack;
 
 object player;
+node *head_pellet;
 
 int up;
 int down;
@@ -30,6 +35,15 @@ int pause;
 
 extern gamestate currentGamestate;
 extern int pausepressed;
+extern char deathString[10];
+
+void crash(char *msg)
+{
+  printf("%s", msg);
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  exit(0);
+}
 
 int init(void)
 {
@@ -69,47 +83,63 @@ int init(void)
 
   if(!fixedsys)
   {
-    fprintf(stderr, "Error loading font 1.");
-    SDL_DestroyWindow(window);
-    SDL_DestroyRenderer(renderer);
-    return 0;
+    crash("Error loading font.\n");
   }
 
   SDL_SetRenderDrawColor(renderer, cBlack.r, cBlack.g, cBlack.b, cBlack.a);
   SDL_RenderClear(renderer);
   SDL_RenderPresent(renderer);
 
-  //load player image from slot 0
-  surface = IMG_Load("resources/img/player.png");
-  //check all surfaces loaded correctly
-  if(!surface)
+  //load player image
+  player_surface = IMG_Load("resources/img/player.png");
+  //load pellet image
+  pellet_surface = IMG_Load("resources/img/pellet.png");
+  //check surfaces loaded correctly
+  if(!player_surface)
   {
-    printf("Error creating surface\n");
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    return 0;
+    crash("Error creating player surface\n");
+  }
+  if(!pellet_surface)
+  {
+    crash("Error creating player surface\n");
   }
 
   //create textures from surfaces
-  player.texture = SDL_CreateTextureFromSurface(renderer, surface);
+  player.texture = SDL_CreateTextureFromSurface(renderer, player_surface);
+  pellet_texture = SDL_CreateTextureFromSurface(renderer, pellet_surface);
 
   //free all surfaces after textures are made
-  SDL_FreeSurface(surface);
+  SDL_FreeSurface(player_surface);
+  SDL_FreeSurface(pellet_surface);
 
   if(!player.texture)
   {
-    printf("Error creating player texture");
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    return 0;
+    crash("Error creating player texture");
+  }
+  if(!pellet_texture)
+  {
+    crash("Error creating pellet texture");
   }
 
   //get width and height of player texture and store information in hitbox rect
   SDL_QueryTexture(player.texture, NULL, NULL, &player.hitbox.w, &player.hitbox.h);
-  //place player in centre of screen
+  //place player in centre-bottom of screen
   player.hitbox.x = (WINDOW_WIDTH - player.hitbox.w) / 2;
-  player.hitbox.y = (WINDOW_HEIGHT - player.hitbox.h) / 2;
-  player.speed = 20;
+  player.hitbox.y = (WINDOW_HEIGHT - player.hitbox.h) * 0.9;
+  player.speed = 10;
+
+  //create pellets
+  srand(time(NULL));
+  head_pellet = malloc(sizeof(node));
+  SDL_Rect hitbox = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 16, .h = 16};
+  object new_obj = {10, 0.0f, 0.0f, hitbox, pellet_texture};
+  if(head_pellet == NULL)
+  {
+    crash("Error: could not initialise pellet list\n");
+  }
+
+  head_pellet->obj = new_obj;
+  head_pellet->next = NULL;
 
   currentGamestate = INGAME;
 
@@ -130,26 +160,26 @@ void render(void)
   switch(currentGamestate)
   {
     case INGAME:
-      draw_object(player);
-      draw_string("Gamestate: ingame", fixedsys, cWhite, 10, 10, 100, 16);
-      printf("%d\n", pausepressed);
+      drawObject(player);
+      drawPellets(head_pellet);
+      drawString(deathString, fixedsys, cWhite, 2, 2, 160, 32);
       break;
     case PAUSED:
-      draw_object(player);
-      draw_string("Gamestate: paused", fixedsys, cWhite, 10, 10, 100, 16);
-      printf("%d\n", pausepressed);
+      drawObject(player);
+      drawPellets(head_pellet);
+      drawString("PAUSED", fixedsys, cWhite, WINDOW_WIDTH/2 - 48, WINDOW_HEIGHT/2 - 8, 96, 32);
       break;
   }
   SDL_RenderPresent(renderer);
   return;
 }
 
-void draw_object(object o)
+void drawObject(object o)
 {
   SDL_RenderCopy(renderer, o.texture, NULL, &o.hitbox);
 }
 
-void draw_string(char *s, TTF_Font *f, SDL_Color c, int x, int y, int w, int h)
+void drawString(char *s, TTF_Font *f, SDL_Color c, int x, int y, int w, int h)
 {
   SDL_Surface *textSurface = TTF_RenderText_Solid(f, s, c);
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);

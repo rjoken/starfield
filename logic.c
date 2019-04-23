@@ -1,3 +1,4 @@
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -8,12 +9,15 @@
 
 #include "structures.h"
 #include "logic.h"
+#include "pellets.h"
 
 extern object player;
+extern node *head_pellet;
 
 extern SDL_Renderer *renderer;
+extern SDL_Texture *pellet_texture;
 
-extern int frames;
+extern int pellet_count;
 
 extern int up;
 extern int down;
@@ -22,7 +26,12 @@ extern int right;
 extern int pause;
 
 gamestate currentGamestate;
+int deaths = 0;
+char deathString[10]; //max 2 digits for deaths
+int speed = 10;
+int spawn_density = 10;
 int pausepressed = 0;
+int frames;
 
 //per-frame event handler
 int handleEvent(SDL_Event e)
@@ -82,7 +91,9 @@ int handleEvent(SDL_Event e)
 
 void update(void)
 {
-  //printf("%d", pausecounter);
+  frames++;
+  //printf("%d\n", frames);
+  sprintf(deathString, "DEATHS: %d", deaths % 100);
   //collision detection
   int xpos;
   int ypos;
@@ -134,6 +145,25 @@ void update(void)
       player.hitbox.x = xpos;
       player.hitbox.y = ypos;
 
+      //spawn new pellets
+      if((frames % spawn_density) == 0)
+      {
+        srand(frames);
+        SDL_Rect position;
+        position.x = rand() % WINDOW_WIDTH;
+        position.y = 0;
+        position.w = 16;
+        position.h = 16;
+        object pellet = {speed, 0, 0, position, pellet_texture};
+        addPellet(head_pellet, pellet);
+        printf("added\n");
+      }
+      //pellet gravity
+      updatePelletPos(head_pellet);
+      checkCollisionWithY(head_pellet);
+      
+      checkCollisionWithPlayer(head_pellet, player);
+
       //check pause key
       if(pause)
       {
@@ -148,4 +178,12 @@ void update(void)
       }
       return;
   }
+}
+
+void killPlayer(void)
+{
+  printf("death\n");
+  player.hitbox.x = (WINDOW_WIDTH - player.hitbox.w) / 2;
+  player.hitbox.y = (WINDOW_HEIGHT - player.hitbox.h) * 0.9;
+  deaths++;
 }
