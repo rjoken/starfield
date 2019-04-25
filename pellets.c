@@ -16,7 +16,7 @@
 void createObjects(node **head, SDL_Texture *texture)
 {
   *head = malloc(sizeof(node));
-  SDL_Rect hitbox = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 16, .h = 16};
+  SDL_Rect hitbox = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 32, .h = 32};
   object new_obj = {10, 0.0f, 0.0f, hitbox, texture};
   if(*head == NULL)
   {
@@ -124,5 +124,20 @@ void updateObjectPos(node *head)
     node_obj.hitbox.y += node_obj.yvel;
     *current_obj = node_obj;
     current = current->next;
+  }
+}
+
+void destroyAll(node *head)
+{
+  if(head == NULL)
+  {
+    return;
+  }
+  node *current = head;
+  while(current->next != NULL)
+  {
+    node *next = current->next;
+    free(current);
+    current = next;
   }
 }

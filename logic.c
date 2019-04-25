@@ -59,7 +59,7 @@ int handleEvent(SDL_Event e)
       switch(e.key.keysym.scancode)
       {
         case SDL_SCANCODE_UP:
-          if(current_gamestate == MENU)
+          if((current_gamestate == MENU) || (current_gamestate == GAMEOVER))
           {
             if(!up_pressed)
             {
@@ -74,7 +74,7 @@ int handleEvent(SDL_Event e)
           }
           break;
         case SDL_SCANCODE_DOWN:
-          if(current_gamestate == MENU)
+          if((current_gamestate == MENU) || (current_gamestate == GAMEOVER))
           {
             if(!down_pressed)
             {
@@ -169,9 +169,7 @@ void update(void)
 
       //collision detection
       int xpos;
-      int ypos;
       xpos = player.hitbox.x;
-      ypos = player.hitbox.y;
       //cannot be up and down, left and right at the same time
       if(left && !right)
       {
@@ -203,7 +201,8 @@ void update(void)
       //spawn new life pickups
       if((frames % (spawn_density * 5)) == 0)
       {
-        SDL_Rect position = {.x = rand() % WINDOW_WIDTH, .y = 1, .w = 16, .h = 16};
+        float xpos = rand() % WINDOW_WIDTH;
+        SDL_Rect position = {xpos, 0, 32, 32};
         object life_obj = {object_speed, 0.0f, 0.0f, position, life_texture};
         addObject(head_life, life_obj);
       }
@@ -211,7 +210,8 @@ void update(void)
       //spawn new score pickups
       else if((frames % (spawn_density * 2)) == 0)
       {
-        SDL_Rect position = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 16, .h = 16};
+        float xpos = rand() % WINDOW_WIDTH;
+        SDL_Rect position = {xpos, 0, 32, 32};
         object score_obj = {object_speed, 0.0f, 0.0f, position, score_texture};
         addObject(head_score, score_obj);
       }
@@ -219,11 +219,12 @@ void update(void)
       //spawn new pellets
       else if((frames % spawn_density) == 0)
       {
-        SDL_Rect position = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 16, .h = 16};
+        float xpos = rand() % WINDOW_WIDTH;
+        SDL_Rect position = {xpos, 0, 32, 32};
         object pellet = {object_speed, 0.0f, 0.0f, position, pellet_texture};
         addObject(head_pellet, pellet);
       }
-      
+
       //object gravity
       updateObjectPos(head_pellet);
       updateObjectPos(head_score);
@@ -236,7 +237,9 @@ void update(void)
       {
         if(lives-1 < 0)
         {
-          //game over
+          printf("death\n");
+          killPlayer();
+          current_gamestate = GAMEOVER;
         }
         else
         {
@@ -281,6 +284,28 @@ void update(void)
         }
       }
       return;
+    case GAMEOVER:
+      if(enter)
+      {
+        if(menu_buttons[0])
+        {
+          destroyAll(head_pellet);
+          destroyAll(head_score);
+          destroyAll(head_life);
+          createObjects(&head_pellet, pellet_texture);
+          createObjects(&head_score, score_texture);
+          createObjects(&head_life, life_texture);
+          score = 0;
+          lives = 5;
+          object_speed = 10;
+          spawn_density = 10;
+          current_gamestate = INGAME;
+        }
+        else
+        {
+          quit("Game quit.\n");
+        }
+      }
   }
 }
 

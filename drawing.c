@@ -42,6 +42,7 @@ bool pause;
 bool enter;
 
 bool menu_buttons[2];
+char gameover_score[19];
 
 const SDL_Color color_black = {0, 0, 0};
 const SDL_Color color_white = {255, 255, 255};
@@ -53,12 +54,16 @@ const SDL_Color color_grey = {128, 128, 128};
 
 extern gamestate current_gamestate;
 extern bool pause_pressed;
+extern int score;
 extern char score_string[13];
 extern char lives_string[11];
 
 void quit(char *msg)
 {
   printf("%s", msg);
+  destroyAll(head_pellet);
+  destroyAll(head_score);
+  destroyAll(head_life);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   exit(0);
@@ -208,6 +213,22 @@ void render(void)
       else if(!menu_buttons[0] && menu_buttons[1])
       {
         drawString("PLAY", fixedsys, color_grey, WINDOW_WIDTH/2 - (24*2), WINDOW_HEIGHT/2 - 24, 24*4, 48);
+        drawString("QUIT", fixedsys, color_cyan, WINDOW_WIDTH/2 - (24*2), WINDOW_HEIGHT/2 + 24, 24*4, 48);
+      }
+      break;
+    case GAMEOVER:
+
+      sprintf(gameover_score, "YOUR SCORE: %06d", score % 1000000);
+      drawString("GAME OVER", fixedsys, color_red, WINDOW_WIDTH/2 - (48*4.5), 9, 48*9, 72);
+      drawString(gameover_score, fixedsys, color_white, WINDOW_WIDTH/2 - (24*9.5), WINDOW_HEIGHT * 0.4, 24*18, 48);
+      if(menu_buttons[0] && !menu_buttons[1])
+      {
+        drawString("RETRY", fixedsys, color_cyan, WINDOW_WIDTH/2 - (24*2.5), WINDOW_HEIGHT/2 - 24, 24*5, 48);
+        drawString("QUIT", fixedsys, color_grey, WINDOW_WIDTH/2 - (24*2), WINDOW_HEIGHT/2 + 24, 24*4, 48);
+      }
+      else if(!menu_buttons[0] && menu_buttons[1])
+      {
+        drawString("RETRY", fixedsys, color_grey, WINDOW_WIDTH/2 - (24*2.5), WINDOW_HEIGHT/2 - 24, 24*5, 48);
         drawString("QUIT", fixedsys, color_cyan, WINDOW_WIDTH/2 - (24*2), WINDOW_HEIGHT/2 + 24, 24*4, 48);
       }
       break;
