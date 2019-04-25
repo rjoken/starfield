@@ -23,5 +23,3 @@ typedef struct obj_node
   object obj;
   struct obj_node *next;
 } node;
-
-//typedef struct obj_node node;

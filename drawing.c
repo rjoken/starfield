@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_image.h>
@@ -16,32 +17,46 @@ SDL_Window *window;
 SDL_Renderer *renderer;
 
 SDL_Surface *player_surface;
-SDL_Surface *pellet_surface;
 
 SDL_Texture *pellet_texture;
+SDL_Surface *pellet_surface;
+
+SDL_Texture *score_texture;
+SDL_Surface *score_surface;
+
+SDL_Texture *life_texture;
+SDL_Surface *life_surface;
 
 TTF_Font *fixedsys;
-SDL_Color cWhite;
-SDL_Color cBlack;
-
-TTF_Font *fixedsys;
-SDL_Color cWhite;
-SDL_Color cBlack;
 
 object player;
 node *head_pellet;
+node *head_score;
+node *head_life;
 
-int up;
-int down;
-int left;
-int right;
-int pause;
+bool up;
+bool down;
+bool left;
+bool right;
+bool pause;
+bool enter;
 
-extern gamestate currentGamestate;
-extern int pausepressed;
-extern char deathString[10];
+bool menu_buttons[2];
 
-void crash(char *msg)
+const SDL_Color color_black = {0, 0, 0};
+const SDL_Color color_white = {255, 255, 255};
+const SDL_Color color_red = {255, 0, 0};
+const SDL_Color color_green = {0, 255, 0};
+const SDL_Color color_blue = {0, 0, 255};
+const SDL_Color color_cyan = {0, 255, 255};
+const SDL_Color color_grey = {128, 128, 128};
+
+extern gamestate current_gamestate;
+extern bool pause_pressed;
+extern char score_string[13];
+extern char lives_string[11];
+
+void quit(char *msg)
 {
   printf("%s", msg);
   SDL_DestroyRenderer(renderer);
@@ -80,48 +95,87 @@ int init(void)
 
   TTF_Init();
   fixedsys = TTF_OpenFont("resources/fnt/fixedsys.ttf", 16);
-  cWhite.r = 255;
-  cWhite.g = 255;
-  cWhite.b = 255;
-  cWhite.a = 0;
 
   if(!fixedsys)
   {
-    crash("Error loading font.\n");
+    quit("Error loading font.\n");
   }
 
-  SDL_SetRenderDrawColor(renderer, cBlack.r, cBlack.g, cBlack.b, cBlack.a);
+  SDL_SetRenderDrawColor(renderer, color_black.r, color_black.g, color_black.b, color_black.a);
   SDL_RenderClear(renderer);
   SDL_RenderPresent(renderer);
 
+  current_gamestate = MENU;
+
+  up = false;
+  down = false;
+  left = false;
+  right = false;
+  pause = false;
+  enter = false;
+  menu_buttons[0] = true;
+  menu_buttons[1] = false;
+
+  render();
+
+  return 1;
+}
+
+void initGame(void)
+{
   //load player image
   player_surface = IMG_Load("resources/img/player.png");
   //load pellet image
   pellet_surface = IMG_Load("resources/img/pellet.png");
+  //load score image
+  score_surface = IMG_Load("resources/img/score.png");
+  //load life image
+  life_surface = IMG_Load("resources/img/life.png");
   //check surfaces loaded correctly
   if(!player_surface)
   {
-    crash("Error creating player surface\n");
+    quit("Error creating player surface\n");
   }
   if(!pellet_surface)
   {
-    crash("Error creating player surface\n");
+    quit("Error creating pellet surface\n");
+  }
+  if(!score_surface)
+  {
+    quit("Error creating score surface\n");
+  }
+  if(!life_surface)
+  {
+    quit("Error creating life surface\n");
   }
 
   //create textures from surfaces
   player.texture = SDL_CreateTextureFromSurface(renderer, player_surface);
   pellet_texture = SDL_CreateTextureFromSurface(renderer, pellet_surface);
+  score_texture = SDL_CreateTextureFromSurface(renderer, score_surface);
+  life_texture = SDL_CreateTextureFromSurface(renderer, life_surface);
 
   //free all surfaces after textures are made
   SDL_FreeSurface(player_surface);
+  SDL_FreeSurface(pellet_surface);
+  SDL_FreeSurface(score_surface);
+  SDL_FreeSurface(life_surface);
 
   if(!player.texture)
   {
-    crash("Error creating player texture");
+    quit("Error creating player texture");
   }
   if(!pellet_texture)
   {
-    crash("Error creating pellet texture");
+    quit("Error creating pellet texture");
+  }
+  if(!score_texture)
+  {
+    quit("Error creating score texture");
+  }
+  if(!life_texture)
+  {
+    quit("Error creating life texture");
   }
 
   //get width and height of player texture and store information in hitbox rect
@@ -132,45 +186,47 @@ int init(void)
   player.speed = 10;
 
   //create pellets
-  srand(time(NULL));
-  head_pellet = malloc(sizeof(node));
-  SDL_Rect hitbox = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 16, .h = 16};
-  object new_obj = {10, 0.0f, 0.0f, hitbox, pellet_texture};
-  if(head_pellet == NULL)
-  {
-    crash("Error: could not initialise pellet list\n");
-  }
+  createObjects(&head_pellet, pellet_texture);
+  createObjects(&head_score, score_texture);
+  createObjects(&head_life, life_texture);
 
-  head_pellet->obj = new_obj;
-  head_pellet->next = NULL;
-
-  currentGamestate = INGAME;
-
-  up = 0;
-  down = 0;
-  left = 0;
-  right = 0;
-  pause = 0;
-
-  render();
-
-  return 1;
+  current_gamestate = INGAME;
 }
 
 void render(void)
 {
   SDL_RenderClear(renderer);
-  switch(currentGamestate)
+  switch(current_gamestate)
   {
+    case MENU:
+      drawString("STARFIELD", fixedsys, color_white, WINDOW_WIDTH/2 - (48*4), 8, 48*8, 72);
+      if(menu_buttons[0] && !menu_buttons[1])
+      {
+        drawString("PLAY", fixedsys, color_cyan, WINDOW_WIDTH/2 - (24*2), WINDOW_HEIGHT/2 - 24, 24*4, 48);
+        drawString("QUIT", fixedsys, color_grey, WINDOW_WIDTH/2 - (24*2), WINDOW_HEIGHT/2 + 24, 24*4, 48);
+      }
+      else if(!menu_buttons[0] && menu_buttons[1])
+      {
+        drawString("PLAY", fixedsys, color_grey, WINDOW_WIDTH/2 - (24*2), WINDOW_HEIGHT/2 - 24, 24*4, 48);
+        drawString("QUIT", fixedsys, color_cyan, WINDOW_WIDTH/2 - (24*2), WINDOW_HEIGHT/2 + 24, 24*4, 48);
+      }
+      break;
     case INGAME:
       drawObject(player);
-      drawPellets(head_pellet);
-      drawString(deathString, fixedsys, cWhite, 2, 2, 160, 32);
+      drawObjects(head_pellet);
+      drawObjects(head_score);
+      drawObjects(head_life);
+      drawString(score_string, fixedsys, color_white, 2, 2, 24*13, 48);
+      drawString(lives_string, fixedsys, color_white, WINDOW_WIDTH - 24*10, 2, 24*10, 48);
       break;
     case PAUSED:
       drawObject(player);
-      drawPellets(head_pellet);
-      drawString("PAUSED", fixedsys, cWhite, WINDOW_WIDTH/2 - 48, WINDOW_HEIGHT/2 - 8, 96, 32);
+      drawObjects(head_pellet);
+      drawObjects(head_score);
+      drawObjects(head_life);
+      drawString(score_string, fixedsys, color_grey, 2, 2, 24*13, 48);
+      drawString(lives_string, fixedsys, color_grey, WINDOW_WIDTH - 24*10, 2, 24*10, 48);
+      drawString("PAUSED", fixedsys, color_white, WINDOW_WIDTH/2 - (24*3), WINDOW_HEIGHT/2 - 24, 24*6, 48);
       break;
   }
   SDL_RenderPresent(renderer);
@@ -184,14 +240,10 @@ void drawObject(object o)
 
 void drawString(char *s, TTF_Font *f, SDL_Color c, int x, int y, int w, int h)
 {
-  SDL_Surface *textSurface = TTF_RenderText_Solid(f, s, c);
-  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-  SDL_FreeSurface(textSurface);
-  SDL_Rect container;
-  container.x = x;
-  container.y = y;
-  container.w = w;
-  container.h = h;
+  SDL_Surface *text_surface = TTF_RenderText_Solid(f, s, c);
+  SDL_Texture *text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+  SDL_FreeSurface(text_surface);
+  SDL_Rect container = {.x = x, .y = y, .w = w, .h = h};
 
-  SDL_RenderCopy(renderer, textTexture, NULL, &container);
+  SDL_RenderCopy(renderer, text_texture, NULL, &container);
 }

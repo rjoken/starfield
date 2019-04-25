@@ -1,6 +1,8 @@
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_image.h>
@@ -16,6 +18,7 @@ int main(int argc, char *argv[])
 {
   int delay = 1000/60;
   int close_requested = 0;
+  srand(time(NULL));
   if(init() == 0)
   {
     SDL_Quit();

@@ -2,38 +2,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
 #include "structures.h"
+#include "drawing.h"
 #include "logic.h"
 #include "pellets.h"
 
 extern object player;
 extern node *head_pellet;
+extern node *head_score;
+extern node *head_life;
 
 extern SDL_Renderer *renderer;
 extern SDL_Texture *pellet_texture;
+extern SDL_Texture *score_texture;
+extern SDL_Texture *life_texture;
 
-extern int pellet_count;
+extern bool up;
+extern bool down;
+extern bool left;
+extern bool right;
+extern bool pause;
+extern bool enter;
+extern bool menu_buttons[2];
 
-extern int frames;
+gamestate current_gamestate;
 
-extern int up;
-extern int down;
-extern int left;
-extern int right;
-extern int pause;
-
-gamestate currentGamestate;
-int deaths = 0;
-char deathString[10]; //max 2 digits for deaths
-int speed = 10;
+int object_speed = 10;
 int spawn_density = 10;
-int pausepressed = 0;
+
+//these bools act as chokers for menu buttons to prevent 60fps toggling
+//without these, menu navigation would be near impossible
+bool pause_pressed = false;
+bool up_pressed = false;
+bool down_pressed = false;
 int frames;
+int score = 0;
+int lives = 5;
+char score_string[14]; //max 6 digits for score
+char lives_string[11]; //max 3 digits for lives
 
 //per-frame event handler
 int handleEvent(SDL_Event e)
@@ -41,29 +53,56 @@ int handleEvent(SDL_Event e)
   switch(e.type)
   {
     case SDL_QUIT:
-      SDL_Quit();
+      quit("Close button pressed.\n");
       return 1;
     case SDL_KEYDOWN:
       switch(e.key.keysym.scancode)
       {
         case SDL_SCANCODE_UP:
-          up = 1;
+          if(current_gamestate == MENU)
+          {
+            if(!up_pressed)
+            {
+              up_pressed = true;
+              menu_buttons[0] = !menu_buttons[0];
+              menu_buttons[1] = !menu_buttons[1];
+            }
+          }
+          else
+          {
+            up = true;
+          }
           break;
         case SDL_SCANCODE_DOWN:
-          down = 1;
+          if(current_gamestate == MENU)
+          {
+            if(!down_pressed)
+            {
+              down_pressed = true;
+              menu_buttons[0] = !menu_buttons[0];
+              menu_buttons[1] = !menu_buttons[1];
+            }
+          }
+          else
+          {
+            down = true;
+          }
           break;
         case SDL_SCANCODE_LEFT:
-          left = 1;
+          left = true;
           break;
         case SDL_SCANCODE_RIGHT:
-          right = 1;
+          right = true;
           break;
         case SDL_SCANCODE_P:
-          if(pausepressed == 0)
+          if(!pause_pressed)
           {
-            pausepressed = 1;
+            pause_pressed = 1;
             pause = !pause;
           }
+          break;
+        case SDL_SCANCODE_RETURN:
+          enter = true;
           break;
       }
       break;
@@ -71,19 +110,30 @@ int handleEvent(SDL_Event e)
     switch(e.key.keysym.scancode)
     {
       case SDL_SCANCODE_UP:
-        up = 0;
+        up = false;
+        if(up_pressed)
+        {
+          up_pressed = false;
+        }
         break;
       case SDL_SCANCODE_DOWN:
-        down = 0;
+        down = false;
+        if(down_pressed)
+        {
+          down_pressed = false;
+        }
         break;
       case SDL_SCANCODE_LEFT:
-        left = 0;
+        left = false;
         break;
       case SDL_SCANCODE_RIGHT:
-        right = 0;
+        right = false;
         break;
       case SDL_SCANCODE_P:
-        pausepressed = 0;
+        pause_pressed = false;
+        break;
+      case SDL_SCANCODE_RETURN:
+        enter = false;
         break;
     }
     break;
@@ -93,27 +143,36 @@ int handleEvent(SDL_Event e)
 
 void update(void)
 {
-  frames++;
-  //printf("%d\n", frames);
-  sprintf(deathString, "DEATHS: %d", deaths % 100);
-  //collision detection
-  int xpos;
-  int ypos;
-  switch(currentGamestate)
+  switch(current_gamestate)
   {
     case INGAME:
+      frames++;
+      sprintf(score_string, "SCORE: %06d", score % 1000000); //maximum 6 digits for score
+      sprintf(lives_string, "LIVES: %03d", lives % 1000);
+      if(frames % 60 == 0)
+      {
+        //increment score every second
+        score+=1;
+      }
+      if((score > 999) && ((score % 1000) == 0))
+      {
+        //spawn density increases every 1000 score
+        if(spawn_density-1 > 0)
+        {
+          spawn_density--;
+        }
+      }
+      if((score > 4999) && ((score % 5000) == 0))
+      {
+        object_speed++;
+      }
+
+      //collision detection
+      int xpos;
+      int ypos;
       xpos = player.hitbox.x;
       ypos = player.hitbox.y;
       //cannot be up and down, left and right at the same time
-      player.xvel = player.yvel = 0;
-      if(up && !down)
-      {
-        player.yvel = -player.speed;
-      }
-      if(down && !up)
-      {
-        player.yvel = player.speed;
-      }
       if(left && !right)
       {
         player.xvel = -player.speed;
@@ -122,9 +181,12 @@ void update(void)
       {
         player.xvel = player.speed;
       }
+      if(!right && !left)
+      {
+        player.xvel = 0;
+      }
 
       xpos += player.xvel;
-      ypos += player.yvel;
 
       //reset player to boundary on wall collision
       if(xpos <= 0)
@@ -135,48 +197,88 @@ void update(void)
       {
         xpos = WINDOW_WIDTH - player.hitbox.w;
       }
-      if(ypos <= 0)
-      {
-        ypos = 0;
-      }
-      if(ypos >= WINDOW_HEIGHT - player.hitbox.h)
-      {
-        ypos = WINDOW_HEIGHT - player.hitbox.h;
-      }
 
       player.hitbox.x = xpos;
-      player.hitbox.y = ypos;
+
+      //spawn new life pickups
+      if((frames % (spawn_density * 5)) == 0)
+      {
+        SDL_Rect position = {.x = rand() % WINDOW_WIDTH, .y = 1, .w = 16, .h = 16};
+        object life_obj = {object_speed, 0.0f, 0.0f, position, life_texture};
+        addObject(head_life, life_obj);
+      }
+
+      //spawn new score pickups
+      else if((frames % (spawn_density * 2)) == 0)
+      {
+        SDL_Rect position = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 16, .h = 16};
+        object score_obj = {object_speed, 0.0f, 0.0f, position, score_texture};
+        addObject(head_score, score_obj);
+      }
 
       //spawn new pellets
-      if((frames % spawn_density) == 0)
+      else if((frames % spawn_density) == 0)
       {
-        srand(frames);
-        SDL_Rect position;
-        position.x = rand() % WINDOW_WIDTH;
-        position.y = 0;
-        position.w = 16;
-        position.h = 16;
-        object pellet = {speed, 0, 0, position, pellet_texture};
-        addPellet(head_pellet, pellet);
-        printf("added\n");
+        SDL_Rect position = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 16, .h = 16};
+        object pellet = {object_speed, 0.0f, 0.0f, position, pellet_texture};
+        addObject(head_pellet, pellet);
       }
-      //pellet gravity
-      updatePelletPos(head_pellet);
+      
+      //object gravity
+      updateObjectPos(head_pellet);
+      updateObjectPos(head_score);
+      updateObjectPos(head_life);
       checkCollisionWithY(head_pellet);
+      checkCollisionWithY(head_score);
+      checkCollisionWithY(head_life);
 
-      checkCollisionWithPlayer(head_pellet, player);
+      if(checkCollisionWithPlayer(head_pellet, player))
+      {
+        if(lives-1 < 0)
+        {
+          //game over
+        }
+        else
+        {
+          killPlayer();
+          lives--;
+        }
+      }
+
+      if(checkCollisionWithPlayer(head_score, player))
+      {
+        score+=50;
+      }
+
+      if(checkCollisionWithPlayer(head_life, player))
+      {
+        lives++;
+      }
 
       //check pause key
       if(pause)
       {
-        currentGamestate = PAUSED;
+        current_gamestate = PAUSED;
       }
       return;
     case PAUSED:
       //unpause on pause key
       if(!pause)
       {
-        currentGamestate = INGAME;
+        current_gamestate = INGAME;
+      }
+      return;
+    case MENU:
+      if(enter)
+      {
+        if(menu_buttons[0])
+        {
+          initGame();
+        }
+        if(menu_buttons[1])
+        {
+          quit("Game quit.\n");
+        }
       }
       return;
   }
@@ -184,8 +286,6 @@ void update(void)
 
 void killPlayer(void)
 {
-  printf("death\n");
   player.hitbox.x = (WINDOW_WIDTH - player.hitbox.w) / 2;
   player.hitbox.y = (WINDOW_HEIGHT - player.hitbox.h) * 0.9;
-  deaths++;
 }

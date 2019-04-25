@@ -1,6 +1,8 @@
 #include <time.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_image.h>
@@ -11,9 +13,23 @@
 #include "logic.h"
 #include "pellets.h"
 
-void drawPellets(node *head)
+void createObjects(node **head, SDL_Texture *texture)
 {
-  //draws all pellets in the list to the screen
+  *head = malloc(sizeof(node));
+  SDL_Rect hitbox = {.x = rand() % WINDOW_WIDTH, .y = 0, .w = 16, .h = 16};
+  object new_obj = {10, 0.0f, 0.0f, hitbox, texture};
+  if(*head == NULL)
+  {
+    quit("Error: could not initialise object list\n");
+  }
+
+  (*head)->obj = new_obj;
+  (*head)->next = NULL;
+}
+
+void drawObjects(node *head)
+{
+  //draws all objects in the list to the screen
   node *current = head;
   while(current->next != NULL)
   {
@@ -22,9 +38,9 @@ void drawPellets(node *head)
   }
 }
 
-void addPellet(node *head, object new)
+void addObject(node *head, object new)
 {
-  //adds a new pellet to the list
+  //adds a new object to the list
   node *current = head;
   while(current->next != NULL)
   {
@@ -36,22 +52,7 @@ void addPellet(node *head, object new)
   current->next->next = NULL;
 }
 
-void popPellet(node **head)
-{
-  printf("pop\n");
-  //removes the first pellet from the list
-  node *next_node = NULL;
-  if(*head == NULL)
-  {
-    return;
-  }
-
-  next_node = (*head)->next;
-  free(*head);
-  *head = next_node;
-}
-
-void destroyPellet(node **head, int index)
+void destroyobject(node **head, int index)
 {
   //destroys a pellet based on index
   node *current = *head;
@@ -59,10 +60,6 @@ void destroyPellet(node **head, int index)
 
   if(index == 0)
   {
-    /*
-    temp = (*head)->next;
-    free(*head);
-    *head = temp;*/
     return;
   }
 
@@ -79,13 +76,10 @@ void destroyPellet(node **head, int index)
   temp = current->next;
   current->next = temp->next;
   free(temp);
-  printf("destroyed %d\n", index);
 }
 
-void checkCollisionWithPlayer(node *head, object collider)
+bool checkCollisionWithPlayer(node *head, object collider)
 {
-  //NOT IMPLEMENTED
-
   node *current = head;
   object node_obj;
   for(int i = 0; current->next != NULL; i++)
@@ -94,12 +88,12 @@ void checkCollisionWithPlayer(node *head, object collider)
     if((SDL_HasIntersection(&node_obj.hitbox, &collider.hitbox)) == SDL_TRUE)
     {
       printf("intersect with player\n");
-      destroyPellet(&head, i);
-      killPlayer();
-      return;
+      destroyobject(&head, i);
+      return true;
     }
     current = current->next;
   }
+  return false;
 }
 
 void checkCollisionWithY(node *head)
@@ -111,14 +105,14 @@ void checkCollisionWithY(node *head)
     node_obj = current->obj;
     if(node_obj.hitbox.y > WINDOW_HEIGHT)
     {
-      destroyPellet(&head, i);
+      destroyobject(&head, i);
     }
     current = current->next;
   }
 
 }
 
-void updatePelletPos(node *head)
+void updateObjectPos(node *head)
 {
   node *current = head;
   object node_obj;
@@ -127,7 +121,6 @@ void updatePelletPos(node *head)
     object *current_obj = &current->obj;
     node_obj = current->obj;
     node_obj.yvel = node_obj.speed;
-    node_obj.hitbox.x += node_obj.xvel;
     node_obj.hitbox.y += node_obj.yvel;
     *current_obj = node_obj;
     current = current->next;
