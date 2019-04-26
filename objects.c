@@ -11,7 +11,7 @@
 #include "structures.h"
 #include "drawing.h"
 #include "logic.h"
-#include "pellets.h"
+#include "objects.h"
 
 void createObjects(node **head, SDL_Texture *texture)
 {

@@ -11,7 +11,7 @@
 #include "structures.h"
 #include "drawing.h"
 #include "logic.h"
-#include "pellets.h"
+#include "objects.h"
 
 
 int main(int argc, char *argv[])

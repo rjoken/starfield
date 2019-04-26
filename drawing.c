@@ -11,7 +11,7 @@
 #include "structures.h"
 #include "drawing.h"
 #include "logic.h"
-#include "pellets.h"
+#include "objects.h"
 
 SDL_Window *window;
 SDL_Renderer *renderer;
@@ -190,7 +190,7 @@ void initGame(void)
   player.hitbox.y = (WINDOW_HEIGHT - player.hitbox.h) * 0.9;
   player.speed = 10;
 
-  //create pellets
+  //create objects
   createObjects(&head_pellet, pellet_texture);
   createObjects(&head_score, score_texture);
   createObjects(&head_life, life_texture);

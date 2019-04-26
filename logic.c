@@ -11,7 +11,7 @@
 #include "structures.h"
 #include "drawing.h"
 #include "logic.h"
-#include "pellets.h"
+#include "objects.h"
 
 extern object player;
 extern node *head_pellet;
@@ -216,7 +216,7 @@ void update(void)
         addObject(head_score, score_obj);
       }
 
-      //spawn new pellets
+      //spawn new objects
       else if((frames % spawn_density) == 0)
       {
         float xpos = rand() % WINDOW_WIDTH;
