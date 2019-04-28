@@ -78,20 +78,16 @@ int init(void)
     fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
     return 0;
   }
+  
+  //Uint32 render_flags = SDL_RENDERER_ACCELERATED;
 
-  window = SDL_CreateWindow("Starfield",
-                            SDL_WINDOWPOS_CENTERED,
-                            SDL_WINDOWPOS_CENTERED,
-                            WINDOW_WIDTH, WINDOW_HEIGHT, 0);
+  SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer);
 
   if(!window) //window returns 0, failed to create
   {
     fprintf(stderr, "Error creating window: %s\n", SDL_GetError());
     return 0;
   }
-
-  Uint32 render_flags = SDL_RENDERER_ACCELERATED;
-  renderer = SDL_CreateRenderer(window, -1, render_flags);
 
   if(!renderer)
   {
