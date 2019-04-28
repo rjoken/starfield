@@ -95,6 +95,8 @@ int init(void)
     SDL_DestroyWindow(window);
     return 0;
   }
+  
+  SDL_SetWindowTitle(window, "Starfield");
 
   TTF_Init();
   fixedsys = TTF_OpenFont("resources/fnt/fixedsys.ttf", 16);
