@@ -33,8 +33,9 @@ extern bool menu_buttons[2];
 
 gamestate current_gamestate;
 
-int object_speed = 10;
-int spawn_density = 10;
+int object_speed = 8;
+int spawn_density = 8;
+int level = 1;
 
 //these bools act as chokers for menu buttons to prevent 60fps toggling
 //without these, menu navigation would be near impossible
@@ -46,6 +47,8 @@ int score = 0;
 int lives = 5;
 char score_string[14]; //max 6 digits for score
 char lives_string[11]; //max 3 digits for lives
+char level_string[4]; //max 2 digits for level
+char object_count[12];
 
 //per-frame event handler
 int handleEvent(SDL_Event e)
@@ -58,6 +61,9 @@ int handleEvent(SDL_Event e)
     case SDL_KEYDOWN:
       switch(e.key.keysym.scancode)
       {
+        case SDL_SCANCODE_ESCAPE:
+          quit("Escape button pressed.\n");
+          return 1;
         case SDL_SCANCODE_UP:
           if((current_gamestate == MENU) || (current_gamestate == GAMEOVER))
           {
@@ -149,22 +155,26 @@ void update(void)
       frames++;
       sprintf(score_string, "SCORE: %06d", score % 1000000); //maximum 6 digits for score
       sprintf(lives_string, "LIVES: %03d", lives % 1000);
+      sprintf(level_string, "L%02d", level % 100);
+      sprintf(object_count, "OBJECTS: %02d", countObjects(head_pellet));
       if(frames % 60 == 0)
       {
         //increment score every second
         score+=1;
       }
-      if((score > 999) && ((score % 1000) == 0))
+      if((frames % 1800) == 0)
       {
-        //spawn density increases every 1000 score
-        if(spawn_density-1 > 0)
+        level++;
+        //spawn density increases every 30 seconds
+        if(spawn_density-2 > 0)
         {
-          spawn_density--;
+          spawn_density -= 2;
         }
       }
-      if((score > 4999) && ((score % 5000) == 0))
+      if((frames % 3600) == 0)
       {
-        object_speed++;
+        //object speed increases every 60 seconds
+        object_speed += 2;
       }
 
       //collision detection
@@ -216,7 +226,7 @@ void update(void)
         addObject(head_score, score_obj);
       }
 
-      //spawn new objects
+      //spawn new pellets
       else if((frames % spawn_density) == 0)
       {
         float xpos = rand() % WINDOW_WIDTH;
@@ -243,6 +253,7 @@ void update(void)
         }
         else
         {
+          printf("Player collided with pellet.\n");
           killPlayer();
           lives--;
         }
@@ -250,11 +261,13 @@ void update(void)
 
       if(checkCollisionWithPlayer(head_score, player))
       {
+        printf("Player collided with score.\n");
         score+=50;
       }
 
       if(checkCollisionWithPlayer(head_life, player))
       {
+        printf("Player collided with life.\n");
         lives++;
       }
 
@@ -297,8 +310,9 @@ void update(void)
           createObjects(&head_life, life_texture);
           score = 0;
           lives = 5;
-          object_speed = 10;
-          spawn_density = 10;
+          object_speed = 8;
+          spawn_density = 8;
+          level = 1;
           current_gamestate = INGAME;
         }
         else

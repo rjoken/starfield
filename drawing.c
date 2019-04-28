@@ -57,6 +57,8 @@ extern bool pause_pressed;
 extern int score;
 extern char score_string[13];
 extern char lives_string[11];
+extern char level_string[3];
+extern char object_count[12];
 
 void quit(char *msg)
 {
@@ -239,6 +241,8 @@ void render(void)
       drawObjects(head_life);
       drawString(score_string, fixedsys, color_white, 2, 2, 24*13, 48);
       drawString(lives_string, fixedsys, color_white, WINDOW_WIDTH - 24*10, 2, 24*10, 48);
+      drawString(level_string, fixedsys, color_white, WINDOW_WIDTH - 24*3, 50, 24*3, 48);
+      drawString(object_count, fixedsys, color_white, 2, WINDOW_HEIGHT - 48, 24*11, 48);
       break;
     case PAUSED:
       drawObject(player);
@@ -247,6 +251,7 @@ void render(void)
       drawObjects(head_life);
       drawString(score_string, fixedsys, color_grey, 2, 2, 24*13, 48);
       drawString(lives_string, fixedsys, color_grey, WINDOW_WIDTH - 24*10, 2, 24*10, 48);
+      drawString(level_string, fixedsys, color_grey, WINDOW_WIDTH - 24*3, 50, 24*3, 48);
       drawString("PAUSED", fixedsys, color_white, WINDOW_WIDTH/2 - (24*3), WINDOW_HEIGHT/2 - 24, 24*6, 48);
       break;
   }

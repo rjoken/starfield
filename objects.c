@@ -87,7 +87,6 @@ bool checkCollisionWithPlayer(node *head, object collider)
     node_obj = current->obj;
     if((SDL_HasIntersection(&node_obj.hitbox, &collider.hitbox)) == SDL_TRUE)
     {
-      printf("intersect with player\n");
       destroyobject(&head, i);
       return true;
     }
@@ -140,4 +139,19 @@ void destroyAll(node *head)
     free(current);
     current = next;
   }
+}
+
+int countObjects(node *head)
+{
+  if(head == NULL)
+  {
+    return 0;
+  }
+  node *current = head;
+  int num = 0;
+  for(; current->next != NULL; num++)
+  {
+    current = current->next;
+  }
+  return num;
 }
